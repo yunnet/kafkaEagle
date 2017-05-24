@@ -1,0 +1,2 @@
+<script src="${springMacroRequestContext.contextPath}/static/js/plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="${springMacroRequestContext.contextPath}/static/js/plugins/datatables/dataTables.bootstrap.min.js"></script>

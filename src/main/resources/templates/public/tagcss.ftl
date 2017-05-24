@@ -1,0 +1,2 @@
+<link href="${springMacroRequestContext.contextPath}/static/css/public/tokenfield-typeahead.css" rel="stylesheet" />
+<link href="${springMacroRequestContext.contextPath}/static/css/public/bootstrap-tokenfield.css" rel="stylesheet"/>

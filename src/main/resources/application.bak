@@ -1,0 +1,12 @@
+server:
+  port:8080
+  context-path:/ke
+  
+spring:
+  mvc:
+    view:
+      prefix:/templates/
+      suffix:.ftl
+    freemarker：
+      cache:false
+      request-context-attribute:request
