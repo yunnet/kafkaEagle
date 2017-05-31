@@ -21,17 +21,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import org.smartloli.kafka.eagle.common.util.ConstantUtils;
-import org.smartloli.kafka.eagle.common.util.SystemConfigUtils;
-import org.smartloli.kafka.eagle.core.factory.KafkaFactory;
-import org.smartloli.kafka.eagle.core.factory.KafkaService;
-import org.smartloli.kafka.eagle.core.ipc.RpcClient;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+
+import org.smartloli.kafka.eagle.common.util.ConstantUtils;
+import org.smartloli.kafka.eagle.common.util.SystemConfigUtils;
+import org.smartloli.kafka.eagle.core.factory.KafkaFactory;
+import org.smartloli.kafka.eagle.core.factory.KafkaService;
 
 /**
  * Handler url request and check whether has session .
@@ -55,7 +55,6 @@ public class AccountInterceptor extends HandlerInterceptorAdapter {
 				String defaultClusterAlias = clusterAliass[0];
 				request.getSession().setAttribute(ConstantUtils.SessionAlias.CLUSTER_ALIAS, defaultClusterAlias);
 			}
-			
 			String formatter = SystemConfigUtils.getProperty("kafka.eagle.offset.storage");
 			if ("kafka".equals(formatter) && count == 0) {
 				HttpSession session = request.getSession();
@@ -70,7 +69,7 @@ public class AccountInterceptor extends HandlerInterceptorAdapter {
 					bootstrapServers += host + ":" + port + ",";
 				}
 				bootstrapServers = bootstrapServers.substring(0, bootstrapServers.length() - 1);
-				RpcClient.system(bootstrapServers);
+				//RpcClient.system(bootstrapServers);
 				count++;
 			}
 		} catch (Exception e) {

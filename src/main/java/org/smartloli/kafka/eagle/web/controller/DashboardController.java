@@ -23,14 +23,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import org.smartloli.kafka.eagle.common.util.ConstantUtils;
-import org.smartloli.kafka.eagle.common.util.GzipUtils;
-import org.smartloli.kafka.eagle.web.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
+import org.smartloli.kafka.eagle.common.util.ConstantUtils;
+import org.smartloli.kafka.eagle.common.util.GzipUtils;
+import org.smartloli.kafka.eagle.web.service.DashboardService;
 
 /**
  * Dashboard controller to viewer data.
@@ -51,7 +51,9 @@ public class DashboardController {
 	/** Index viewer. */
 	@RequestMapping(value = "/", method = RequestMethod.GET)
 	public ModelAndView indexView(HttpSession session) {
-		return new ModelAndView("/main/index");
+		ModelAndView mav = new ModelAndView();
+		mav.setViewName("/main/index");
+		return mav;
 	}
 
 	/** Get data from Kafka in dashboard by ajax. */
@@ -73,7 +75,8 @@ public class DashboardController {
 
 		try {
 			byte[] output = GzipUtils.compressToByte(dashboradService.getDashboard(clusterAlias));
-			response.setContentLength(output == null ? "NULL".toCharArray().length : output.length);
+			output = output == null ? "".getBytes() : output;
+			response.setContentLength(output.length);
 			OutputStream out = response.getOutputStream();
 			out.write(output);
 
