@@ -21,14 +21,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.smartloli.kafka.eagle.common.domain.OffsetDomain;
 import org.smartloli.kafka.eagle.common.domain.OffsetZkDomain;
 import org.smartloli.kafka.eagle.common.util.CalendarUtils;
+import org.smartloli.kafka.eagle.common.util.SystemConfigUtils;
 import org.smartloli.kafka.eagle.core.factory.KafkaFactory;
 import org.smartloli.kafka.eagle.core.factory.KafkaService;
 import org.smartloli.kafka.eagle.core.factory.ZkFactory;
 import org.smartloli.kafka.eagle.core.factory.ZkService;
-import org.smartloli.kafka.eagle.core.ipc.RpcClient;
 import org.smartloli.kafka.eagle.web.service.OffsetService;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +50,8 @@ import com.alibaba.fastjson.JSONObject;
 @Service
 public class OffsetServiceImpl implements OffsetService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(OffsetServiceImpl.class);
+
 	/** Kafka service interface. */
 	private KafkaService kafkaService = new KafkaFactory().create();
 
@@ -56,8 +60,9 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Get Kafka brokers. */
 	private List<String> getBrokers(String clusterAlias, String topic, String group) {
-		JSONArray brokers = JSON.parseArray(kafkaService.getAllBrokersInfo(clusterAlias));
-		List<String> targets = new ArrayList<String>();
+        LOG.info("invoke getBrokers::clusterAlias={}, topic={}, group={}", clusterAlias, topic, group);
+        JSONArray brokers = JSON.parseArray(kafkaService.getAllBrokersInfo(clusterAlias));
+        List<String> targets = new ArrayList<String>();
 		for (Object object : brokers) {
 			JSONObject target = (JSONObject) object;
 			String host = target.getString("host");
@@ -69,16 +74,22 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Get Kafka logsize from Kafka topic. */
 	private String getKafkaLogSize(String clusterAlias, String topic, String group) {
-		List<String> hosts = getBrokers(clusterAlias, topic, group);
-		List<String> partitions = kafkaService.findTopicPartition(clusterAlias, topic);
+        LOG.info("invoke getKafkaLogSize::clusterAlias={}, topic={}, group={}", clusterAlias, topic, group);
+        List<String> hosts = getBrokers(clusterAlias, topic, group);
+        List<String> partitions = kafkaService.findTopicPartition(clusterAlias, topic);
 		List<OffsetDomain> targets = new ArrayList<OffsetDomain>();
 		for (String partition : partitions) {
 			int partitionInt = Integer.parseInt(partition);
 			OffsetZkDomain offsetZk = getKafkaOffset(clusterAlias, topic, group, partitionInt);
 			OffsetDomain offset = new OffsetDomain();
-			long logSize = kafkaService.getLogSize(hosts, topic, partitionInt);
-			offset.setPartition(partitionInt);
-			offset.setLogSize(logSize);
+            long logSize = 0L;
+            if (SystemConfigUtils.getBooleanProperty("kafka.eagle.sasl.enable")) {
+                logSize = kafkaService.getKafkaLogSize(clusterAlias, topic, partitionInt);
+            } else {
+                logSize = kafkaService.getLogSize(hosts, topic, partitionInt);
+            }
+            offset.setPartition(partitionInt);
+            offset.setLogSize(logSize);
 			offset.setCreate(offsetZk.getCreate());
 			offset.setModify(offsetZk.getModify());
 			offset.setOffset(offsetZk.getOffset());
@@ -91,9 +102,12 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Get Kafka offset from Kafka topic. */
 	private OffsetZkDomain getKafkaOffset(String clusterAlias, String topic, String group, int partition) {
-		JSONArray kafkaOffsets = JSON.parseArray(RpcClient.getOffset(clusterAlias));
-		OffsetZkDomain targetOffset = new OffsetZkDomain();
-		for (Object kafkaOffset : kafkaOffsets) {
+        LOG.info("invoke getKafkaOffset::clusterAlias={}, topic={}, group={}, partition={}", clusterAlias, topic,
+                group,
+                partition);
+        JSONArray kafkaOffsets = JSON.parseArray(kafkaService.getKafkaOffset(clusterAlias));
+        OffsetZkDomain targetOffset = new OffsetZkDomain();
+        for (Object kafkaOffset : kafkaOffsets) {
 			JSONObject object = (JSONObject) kafkaOffset;
 			String _topic = object.getString("topic");
 			String _group = object.getString("group");
@@ -121,8 +135,9 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Get logsize from zookeeper. */
 	private String getLogSize(String clusterAlias, String topic, String group) {
-		List<String> hosts = getBrokers(clusterAlias, topic, group);
-		List<String> partitions = kafkaService.findTopicPartition(clusterAlias, topic);
+        LOG.info("invoke getLogSize::clusterAlias={}, topic={}, group={}", clusterAlias, topic, group);
+        List<String> hosts = getBrokers(clusterAlias, topic, group);
+        List<String> partitions = kafkaService.findTopicPartition(clusterAlias, topic);
 		List<OffsetDomain> targets = new ArrayList<OffsetDomain>();
 		for (String partition : partitions) {
 			int partitionInt = Integer.parseInt(partition);
@@ -152,8 +167,9 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Get Kafka offset graph data from Zookeeper. */
 	public String getOffsetsGraph(String clusterAlias, String group, String topic) {
-		String target = zkService.getOffsets(clusterAlias, group, topic);
-		if (target.length() > 0) {
+        LOG.info("invoke getOffsetsGraph::clusterAlias={}, group={}, topic={}", clusterAlias, group, topic);
+        String target = zkService.getOffsets(clusterAlias, group, topic);
+        if (target.length() > 0) {
 			target = JSON.parseObject(target).getString("data");
 		}
 		return target;
@@ -161,13 +177,16 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Judge group & topic from Zookeeper has exist. */
 	private boolean hasGroupTopic(String clusterAlias, String group, String topic) {
-		return kafkaService.findTopicAndGroupExist(clusterAlias, topic, group);
-	}
+        LOG.info("invoke hasGroupTopic::clusterAlias={}, group={}, topic={}", clusterAlias, group, topic);
+        return kafkaService.findTopicAndGroupExist(clusterAlias, topic, group);
+    }
 
 	/** Judge group & topic exist Kafka topic or Zookeeper. */
 	public boolean hasGroupTopic(String clusterAlias, String formatter, String group, String topic) {
-		if ("kafka".equals(formatter)) {
-			return hasKafkaGroupTopic(clusterAlias, group, topic);
+        LOG.info("invoke hasGroupTopic::clusterAlias={}, formatter={}, group={}, topic={}", clusterAlias, formatter,
+                group, topic);
+        if ("kafka".equals(formatter)) {
+            return hasKafkaGroupTopic(clusterAlias, group, topic);
 		} else {
 			return hasGroupTopic(clusterAlias, group, topic);
 		}
@@ -175,8 +194,9 @@ public class OffsetServiceImpl implements OffsetService {
 
 	/** Judge group & topic from Kafka topic has exist. */
 	private boolean hasKafkaGroupTopic(String clusterAlias, String group, String topic) {
-		boolean status = false;
-		Set<String> topics = kafkaService.getKafkaConsumerTopic(clusterAlias, group);
+        LOG.info("invoke hasKafkaGroupTopic::clusterAlias={}, group={}, topic={}", clusterAlias, group, topic);
+        boolean status = false;
+        Set<String> topics = kafkaService.getKafkaConsumerTopic(clusterAlias, group);
 		if (topics.contains(topic)) {
 			status = true;
 		}
